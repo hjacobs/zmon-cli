@@ -241,3 +241,38 @@ def render_search(search, output):
     _print_table('Alerts:', search['alerts'])
     _print_table('Dashboards:', search['dashboards'])
     _print_table('Grafana Dashboards:', search['grafana_dashboards'])
+
+
+def render_dashboard(alerts, output=None):
+    rows = []
+
+    for alert in alerts:
+        row = alert
+
+        row['last_modified_time'] = calendar.timegm(time.gmtime(row.pop('start_time')))
+
+        row['name'] = row['name'][:60]
+        row['responsible_team'] = row['responsible_team'][:40].replace('\n', '')
+
+        priorities = {1: 'HIGH', 2: 'MEDIUM', 3: 'LOW'}
+        row['priority'] = priorities.get(row['priority'], 'LOW')
+
+        rows.append(row)
+
+    rows.sort(key=lambda r: (0-r['last_modified_time'], r['id']))
+
+    check_styles = {
+        'HIGH': {'fg': 'red'},
+        'MEDIUM': {'fg': 'yellow', 'bold': True},
+        'LOW': {'fg': 'yellow'},
+    }
+
+    titles = {
+        'last_modified_time': 'Started'
+    }
+
+    headers = [
+        'name', 'responsible_team', 'priority', 'last_modified_time',
+    ]
+
+    print_table(headers, rows, titles=titles, styles=check_styles)

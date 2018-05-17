@@ -5,7 +5,7 @@ import click
 from clickclick import AliasedGroup, Action, ok
 
 from zmon_cli.cmds.command import cli, get_client, yaml_output_option, pretty_json
-from zmon_cli.output import dump_yaml, Output
+from zmon_cli.output import dump_yaml, Output, render_dashboard
 
 
 @cli.group('dashboard', cls=AliasedGroup)
@@ -70,6 +70,56 @@ def dashboard_update(obj, yaml_file):
     with Action(msg, nl=True):
         dash_id = client.update_dashboard(dashboard)
         ok(client.dashboard_url(dash_id))
+
+
+@dashboard.command('show')
+@click.argument("dashboard_id", type=int)
+@click.pass_obj
+@yaml_output_option
+@pretty_json
+def dashboard_show(obj, dashboard_id, output, pretty):
+    """Show ZMON dashboard"""
+    client = get_client(obj.config)
+    dashboard = client.get_dashboard(dashboard_id)
+
+    alerts = client.get_alert_definitions()
+
+    alerts = [alert for alert in alerts if alert.get('responsible_team') in dashboard['alert_teams']]
+
+    if len(dashboard['tags']) > 0:
+        for tag in dashboard['tags']:
+            alerts = [alert for alert in alerts if tag in alert.get('tags')]
+
+    id = ""
+
+    for alert in alerts:
+        id += str(alert.get('id')) + ","
+
+    result = client.get_alert_status(id)
+
+    """ result is dict of dicts, converting to list of dicts """
+
+    final = []
+    for key in dict.keys(result):
+        temp = {}
+        temp['id'] = key
+        temp['start_time'] = 9999999999.9
+        for alert in alerts:
+            if str(key) == str(alert.get('id')):
+                temp['name'] = alert.get('name')
+                temp['priority'] = alert.get('priority')
+                temp['responsible_team'] = alert.get('responsible_team')
+        temp['entities'] = []
+        for entity in dict.keys(result[key]):
+            temp['entities'].append({entity: result[key][entity]})
+            if result[key][entity]['start_time'] < temp['start_time']:
+                temp['start_time'] = result[key][entity]['start_time']
+        final.append(temp)
+
+    with Output('Retrieving dashboard ...', nl=True, output=output, pretty_json=pretty,
+                printer=render_dashboard) as act:
+
+        act.echo(final)
 
 
 @dashboard.command('help')

@@ -692,6 +692,36 @@ class Zmon:
 
         return self.json(resp)
 
+    @trace(pass_span=True)
+    @logged
+    def get_alert_status(self, alert_id: int, **kwargs) -> dict:
+        """
+        Retrieve alert Status.
+
+        Response is a ``dict`` with entity ID as a key, and check return value as a value.
+
+        :param alert_id: ZMON alert ID.
+        :type alert_id: int
+
+        :return: Alert data dict.
+        :rtype: dict
+
+        Example:
+
+        .. code-block:: json
+
+            {
+                "entity-id-1": 122,
+                "entity-id-2": 0,
+                "entity-id-3": 100
+            }
+        """
+        current_span = extract_span_from_kwargs(**kwargs)
+        current_span.set_tag('alert_id', str(alert_id))
+        resp = self.session.get(self.endpoint(ALERT_DATA, alert_id), timeout=self._timeout)
+
+        return self.json(resp)
+
 ########################################################################################################################
 # SEARCH
 ########################################################################################################################
