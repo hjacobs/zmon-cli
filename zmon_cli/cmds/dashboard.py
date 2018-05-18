@@ -82,6 +82,9 @@ def dashboard_show(obj, dashboard_id, output, pretty):
     client = get_client(obj.config)
     dashboard = client.get_dashboard(dashboard_id)
 
+    if dashboard.get('alert_teams') is None:
+        raise SystemExit
+
     alerts = client.get_alert_definitions()
 
     alerts = [alert for alert in alerts if alert.get('responsible_team') in dashboard['alert_teams']]
@@ -115,6 +118,10 @@ def dashboard_show(obj, dashboard_id, output, pretty):
             if result[key][entity]['start_time'] < temp['start_time']:
                 temp['start_time'] = result[key][entity]['start_time']
         final.append(temp)
+
+    if len(final) == 0:
+        print("No Alerts")
+        raise SystemExit
 
     with Output('Retrieving dashboard ...', nl=True, output=output, pretty_json=pretty,
                 printer=render_dashboard) as act:
